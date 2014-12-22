@@ -1,0 +1,22 @@
+!obj:pylearn2.train.Train {
+    dataset : None,
+
+    model : !obj:pylearn2.models.softmax_regression.SoftmaxRegression {
+        n_classes: 3,
+        irange: 0.05,
+        nvis: 4
+    },
+
+    algorithm : !obj:pylearn2.training_algorithms.sgd.SGD {
+        learning_rate : 1e-1,
+        batch_size : 15,
+        # monitoring_batches : 20,
+        # monitoring_dataset : !obj:pylearn2.datasets.iris.Iris {},
+        termination_criterion : !obj:pylearn2.termination_criteria.EpochCounter {
+            max_epochs : 20
+        }
+    },
+    # save_path: "tsts.pkl",
+    # save_freq : 1
+    
+}
