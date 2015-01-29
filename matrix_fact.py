@@ -384,7 +384,7 @@ class Matrix_Factorization:
                         gradU_j = ( gradCommon * ( u_i ) ) + ( self.lambdas['U'] * u_j )
                         gradU_k = ( gradCommon * ( -u_i ) ) + ( self.lambdas['U'] * u_k )
                     
-                    gradUBias_i = ( gradCommon * ( 0 ) ) #dumb I know, but it matches the equations in the thesis
+                    gradUBias_i = ( gradCommon * ( 0 ) ) #dumb I know
                     gradUBias_j = ( gradCommon * ( 1 ) )
                     gradUBias_k = ( gradCommon * ( -1 ) )
                     
@@ -392,7 +392,7 @@ class Matrix_Factorization:
                         z_ij = self.Z.get(i,j)
                         z_ik = self.Z.get(i,k)
                         gradW = ( gradCommon * ( z_ij - z_ik ) ) + ( self.lambdas['W'] * W )#gradW's shape is (d,)
-                        gradWBias = ( gradCommon * ( 0 ) ) #dumb I know, but it matches the equations in the thesis
+                        gradWBias = ( gradCommon * ( 0 ) ) #dumb I know
         
                     if self.X != None: 
                         x_i = self.X[i].reshape(-1,1)

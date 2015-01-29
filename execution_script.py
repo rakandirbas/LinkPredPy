@@ -143,7 +143,7 @@ def run_script(dataset_id, choice, job_path, job_name, memory=20000, cpus=1, lar
     """
     
     low_memory_choices = [1,2,3,4,5,18,19,23,24,25,26,27,31,32,33]
-    midium_memory_choices = [16,17,20,21,22, 28, 30]
+    midium_memory_choices = [16,17,20,21,22, 28, 30, 39]
     many_cpus = [6, 7, 29, 34, 35, 36]
     
     if choice in low_memory_choices:

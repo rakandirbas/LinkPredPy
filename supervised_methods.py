@@ -52,7 +52,7 @@ def train_with_srw(G, X, test_name,  k=10, delta=5, alpha=0.5, iter=1):
     test_name: the name to be plotted next to the curve.
     k: the number of neighbours a node must have in order to be considered a candidate source node.
     delta: the number of edges the candidate source node made in the future that close a triangle. 
-           (i.e. the future/destination node is a friend of a friend, so delta is a threshold that sees how many
+           (i.e. the future/destination node is a friend of a friend, so delta is a threshold that measures how many
              of these future/destination nodes are friends of current friends). A candidate source node
              that has a degree above k, and made future friends above delta, then becomes a source node
              for training.

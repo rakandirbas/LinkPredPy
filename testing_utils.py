@@ -3,6 +3,7 @@ from graph_utils import *
 from timer import *
 import graphsim as gsim
 import numpy as np
+# np.set_printoptions(threshold='nan')
 import networkx as nx
 from itertools import izip
 import sys
@@ -51,6 +52,15 @@ def draw_rocs(values_list, file_name):
     pl.clf()
     
     for label, fpr, tpr, roc_auc in values_list:
+        np.save(file_name+'_'+ label + '_' +'_fpr_'+'.npy', fpr)
+#         print label, "\n"
+#         print "FPR: \n"
+#         print repr(fpr)
+
+        np.save(file_name+'_'+ label + '_' +'_tpr_'+'.npy', tpr)
+#         print "TPR: \n"
+#         print repr(tpr)
+        
         pl.plot(fpr, tpr, lw=1, label='%s (auc = %0.4f)' % (label, roc_auc))
     
     pl.plot([0, 1], [0, 1], 'k--')
@@ -72,6 +82,16 @@ def draw_pr_curves(values_list, file_name):
     """
     pl.clf()
     for label, precision, recall, avg_prec in values_list:
+        np.save(file_name+'_'+ label + '_' +'_prec_'+'.npy', precision)
+#         print label, "\n"
+#         print "avg _prec", "\n"
+#         print avg_prec
+#         print "Prec: \n"
+#         print repr(precision)
+        
+        np.save(file_name+'_'+ label + '_' +'_rec_'+'.npy', recall)
+#         print "Rec: \n"
+#         print repr(recall)
         pl.plot(recall, precision, label='%s (auc = %0.4f)' % (label, avg_prec))
     
     pl.xlabel('Recall')
@@ -93,6 +113,11 @@ def draw_pr_curves_n_folds(n_folds, test_name, all_prec, all_rec, all_aucs_pr_d,
     pl.plot(all_rec['mean'], all_prec['mean'], label='mean AUPR=%0.4f' % (all_aucs_pr_d['mean']), linewidth=2.0, color='r')
     
     for i in xrange(n_folds):
+#         print "Prec: \n"
+#         print repr(all_prec[i])
+#         
+#         print "Rec: \n"
+#         print repr(all_rec[i])
         pl.plot(all_rec[i], all_prec[i], color='k', alpha=0.3)
     
     pl.xlabel('Recall')
@@ -952,7 +977,44 @@ def get_stratified_training_sets(G, X_nodes, node_to_index, params, edge_removal
     return X_train, X_test, y_train, y_test   
             
             
-
+def make_correlation_dataset(G, node_to_index, params, enabled_features=[1]):
+    """
+    Create a dataset to be used to create correlation plot and scatterplots. 
+    The dataset has as samples all possible edges in the graph. The columns
+    represent the enabled features. 
+    
+    Parameters:
+    -----------
+    G: network.
+    enabled_features: the features to make in the dataset.
+    """
+    
+    edges_list = [pair for pair in IT.combinations(G.nodes(), 2)]
+    degrees = gsim.get_degrees_list(G)
+    original_degrees_list = None
+    A = nx.adj_matrix(G)
+    A = np.asarray(A)
+    
+    X = None
+    
+    for feature_flag in enabled_features:
+        if feature_flag == 1:#local topo features 
+            X = add_local_topo_features(X, A, edges_list, degrees, G.nodes(), original_degrees_list)
+        elif feature_flag == 2:# global topo features
+            X = add_global_features(G, X, edges_list, node_to_index, params)
+    
+    
+    return X
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
 
 
 

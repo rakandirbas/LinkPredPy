@@ -196,9 +196,9 @@ def save_covariance_plot(X, name):
     the_labels = []
     
     if n_cols == 11:
-        the_labels = ["CN", "LP", "Salton", "Jacard", "Sorensen", "HPI", "HDI", "LHN1", "PA", "AA", "RA"]
+        the_labels = ["CN", "LP", "Sal", "Jacard", "Sorensen", "HP", "HD", "LHN1", "PA", "AA", "RA"]
     elif n_cols == 15:
-        the_labels = ["CN", "LP", "Salton", "Jacard", "Sorensen", "HPI", "HDI", "LHN1", "PA", "AA", "RA",
+        the_labels = ["CN", "LP", "Sal", "Jac", "Sor", "HPI", "HD", "LHN1", "PA", "AA", "RA",
                       "Katz", "RWR", "LRW", "SRW"]
     elif n_cols == 4:
         the_labels = ["Katz", "RWR", "LRW", "SRW"]
@@ -253,9 +253,9 @@ def save_scatterplot_matix(X, name):
     the_labels = []
     
     if n_cols == 11:
-        the_labels = ["CN", "LP", "Salton", "Jacard", "Sorensen", "HPI", "HDI", "LHN1", "PA", "AA", "RA"]
+        the_labels = ["CN", "LP", "Sal", "Jac", "Sor", "HP", "HD", "LHN1", "PA", "AA", "RA"]
     elif n_cols == 15:
-        the_labels = ["CN", "LP", "Salton", "Jacard", "Sorensen", "HPI", "HDI", "LHN1", "PA", "AA", "RA",
+        the_labels = ["CN", "LP", "Sal", "Jac", "Sor", "HPI", "HD", "LHN1", "PA", "AA", "RA",
                       "Katz", "RWR", "LRW", "SRW"]
     elif n_cols == 4:
         the_labels = ["Katz", "RWR", "LRW", "SRW"]
