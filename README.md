@@ -1,7 +1,7 @@
 LinkPredPy
 ==========
 
-Just import LinkPredPy.py script and use one of its methods.
+Just import the LinkPredPy.py script and use one of its methods.
 
 This script has the following five methods:
 
