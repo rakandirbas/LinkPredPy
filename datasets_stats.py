@@ -174,13 +174,13 @@ def plot_features_importances(features, importances, plot_file_name):
         save_onebar_barchart_no_errbars("Local+Global", values_dic_loc_glob, all_keys_loc_glob, plot_file_name+'_importances_loc_glob.pdf')
     
 
-def save_correlation_plot(X, name):
+def save_correlation_plot(X, the_labels, name):
     """
     Solves the re-name mistake
     """
-    save_covariance_plot(X, name)
+    save_covariance_plot(X, the_labels, name)
     
-def save_covariance_plot(X, name):
+def save_covariance_plot(X, the_labels, name):
     """
     Visualizes the Correlation matrix for a design matrix.
     
@@ -193,17 +193,17 @@ def save_covariance_plot(X, name):
     n_cols = X.shape[1]
     X = X.T
     
-    the_labels = []
-    
-    if n_cols == 11:
-        the_labels = ["CN", "LP", "Sal", "Jacard", "Sorensen", "HP", "HD", "LHN1", "PA", "AA", "RA"]
-    elif n_cols == 15:
-        the_labels = ["CN", "LP", "Sal", "Jac", "Sor", "HPI", "HD", "LHN1", "PA", "AA", "RA",
-                      "Katz", "RWR", "LRW", "SRW"]
-    elif n_cols == 4:
-        the_labels = ["Katz", "RWR", "LRW", "SRW"]
-    else:
-        the_labels = range(0, n_cols)
+#     the_labels = []
+#     
+#     if n_cols == 11:
+#         the_labels = ["CN", "LP", "Sal", "Jacard", "Sorensen", "HP", "HD", "LHN1", "PA", "AA", "RA"]
+#     elif n_cols == 15:
+#         the_labels = ["CN", "LP", "Sal", "Jac", "Sor", "HPI", "HD", "LHN1", "PA", "AA", "RA",
+#                       "Katz", "RWR", "LRW", "SRW"]
+#     elif n_cols == 4:
+#         the_labels = ["Katz", "RWR", "LRW", "SRW"]
+#     else:
+#         the_labels = range(0, n_cols)
     
     
     R = np.corrcoef(X)

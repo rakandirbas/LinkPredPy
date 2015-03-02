@@ -327,14 +327,14 @@ class Matrix_Factorization:
                 if self.X != None:
                     self.V_n = self.V_n - (alpha * gradV)
             
-    def optimize_r(self, triple_edges, alpha=0.1, n_iter=10, loss="log"):
+    def optimize_r(self, quads_edges, alpha=0.1, n_iter=10, loss="log"):
             """
             Optimizes the AUC ranking factorization model's parameters,
             using stochastic gradient descent.
             
             Parameters:
             -------------
-            triple_edges: a list of tuples of three elements i.e. (node1, node2, node3), where
+            quads_edges: a list of tuples of three elements i.e. (node1, node2, node3), where
                     node1 and node2 represent a positive training example (i.e. they have an edge in the graph) 
                      and node1 and node3 represent a negative training example.
             alpha: gradient descent step size (learning rate).
@@ -358,9 +358,9 @@ class Matrix_Factorization:
                 V = self.V_r
                 
             for epoch in xrange(n_iter):
-                for (node1, node2, node3) in triple_edges:
+                for (node1, node2, node3, node4) in quads_edges:
                     prediction_p = self.compute_prediction(node1, node2, normal=False)
-                    prediction_n = self.compute_prediction(node1, node3, normal=False)
+                    prediction_n = self.compute_prediction(node3, node4, normal=False)
                     #computing the gradients
                     if loss == "square":
                         gradCommon = 2 * ( (prediction_p - prediction_n) - 1 )
@@ -370,46 +370,55 @@ class Matrix_Factorization:
             
                     i = self.node_to_index[node1]
                     j = self.node_to_index[node2]
-                    k = self.node_to_index[node3]
+                    c = self.node_to_index[node3]
+                    k = self.node_to_index[node4]
                     u_i = U[i].reshape(-1,1)
                     u_j = U[j].reshape(-1,1)
+                    u_c = U[c].reshape(-1,1)
                     u_k = U[k].reshape(-1,1)
                     if self.G.is_directed():
-                        gradU_i = ( gradCommon * ( np.dot( L, u_j ) - np.dot( L, u_k ) ) ) + ( self.lambdas['U'] * u_i )
+                        gradU_i = ( gradCommon * ( np.dot( L, u_j ) ) ) + ( self.lambdas['U'] * u_i )
                         gradU_j = ( gradCommon * ( np.dot( L.T, u_i ) ) ) + ( self.lambdas['U'] * u_j )
-                        gradU_k = ( gradCommon * ( - np.dot( L.T, u_i ) ) ) + ( self.lambdas['U'] * u_k )
-                        gradL = ( gradCommon * ( np.dot( u_i, u_j.T )  - np.dot( u_i, u_k.T ) ) ) + ( self.lambdas['L'] * L )
+                        gradU_c = ( gradCommon * (- np.dot( L, u_k ) ) ) + ( self.lambdas['U'] * u_c )
+                        gradU_k = ( gradCommon * ( - np.dot( L.T, u_c ) ) ) + ( self.lambdas['U'] * u_k )
+                        gradL = ( gradCommon * ( np.dot( u_i, u_j.T )  - np.dot( u_c, u_k.T ) ) ) + ( self.lambdas['L'] * L )
                     else:
-                        gradU_i = ( gradCommon * ( u_j - u_k ) ) + ( self.lambdas['U'] * u_i )
+                        gradU_i = ( gradCommon * ( u_j ) ) + ( self.lambdas['U'] * u_i )
                         gradU_j = ( gradCommon * ( u_i ) ) + ( self.lambdas['U'] * u_j )
-                        gradU_k = ( gradCommon * ( -u_i ) ) + ( self.lambdas['U'] * u_k )
+                        gradU_c = ( gradCommon * ( -u_k ) ) + ( self.lambdas['U'] * u_c )
+                        gradU_k = ( gradCommon * ( -u_c ) ) + ( self.lambdas['U'] * u_k )
                     
                     gradUBias_i = ( gradCommon * ( 0 ) ) #dumb I know
                     gradUBias_j = ( gradCommon * ( 1 ) )
+                    gradUBias_c = ( gradCommon * ( -1 ) )
                     gradUBias_k = ( gradCommon * ( -1 ) )
                     
                     if self.Z != None:
                         z_ij = self.Z.get(i,j)
-                        z_ik = self.Z.get(i,k)
-                        gradW = ( gradCommon * ( z_ij - z_ik ) ) + ( self.lambdas['W'] * W )#gradW's shape is (d,)
+                        z_ck = self.Z.get(c,k)
+                        gradW = ( gradCommon * ( z_ij - z_ck ) ) + ( self.lambdas['W'] * W )#gradW's shape is (d,)
                         gradWBias = ( gradCommon * ( 0 ) ) #dumb I know
         
                     if self.X != None: 
                         x_i = self.X[i].reshape(-1,1)
                         x_j = self.X[j].reshape(-1,1)
+                        x_c = self.X[c].reshape(-1,1) 
                         x_k = self.X[k].reshape(-1,1) 
-                        gradV = ( gradCommon * ( np.dot( x_i, x_j.T ) - np.dot( x_i, x_k.T ) ) ) + ( self.lambdas['V'] * V )
+                        gradV = ( gradCommon * ( np.dot( x_i, x_j.T ) - np.dot( x_c, x_k.T ) ) ) + ( self.lambdas['V'] * V )
         
                     
                     gradU_i = gradU_i.reshape(-1)
                     gradU_j = gradU_j.reshape(-1)
+                    gradU_c = gradU_c.reshape(-1)
                     gradU_k = gradU_k.reshape(-1) 
                     #update parameters
                     self.U_r[i] = self.U_r[i] - (alpha * gradU_i)
                     self.U_r[j] = self.U_r[j] - (alpha * gradU_j)
+                    self.U_r[c] = self.U_r[c] - (alpha * gradU_c)
                     self.U_r[k] = self.U_r[k] - (alpha * gradU_k)
                     self.UBias_r[i] = self.UBias_r[i] - (alpha * gradUBias_i)
                     self.UBias_r[j] = self.UBias_r[j] - (alpha * gradUBias_j)
+                    self.UBias_r[c] = self.UBias_r[c] - (alpha * gradUBias_c)
                     self.UBias_r[k] = self.UBias_r[k] - (alpha * gradUBias_k)
                     
                     if self.G.is_directed():
@@ -446,42 +455,32 @@ class Matrix_Factorization:
         
         return probs
     
-    def predict_proba_r(self, test_triple_edges):
+    def predict_proba_r(self, test_set):
         """
         Given a test set of *triple edges*, predict the probability that an edge exist between the
         positive node pair and the negative node pair.
         
         Parameters:
         ------------
-        test_triple_edges: a list of tuples where each tuple is of the form (node1, node2, node3).
-                        node1, node2 and node3 are the nodes's names not their indices. 
-                        Note: node1 and node2 is a positive case (i.e. have an edge),
-                              node1 and node3 is a negative case (i.e. have not edge).
-                              
+        test_set: a list of tuples (node1, node2) to compute their predictions. 
+        
         Returns:
         ------------
         probas: a 1D numpy array of probabilities for the existence of edges. Given a triple example,
                 probas is appended by the probability of the positive example first, then by the negative example.
-        y_test: the corresponding test labels of the test triples.
         """
         
         probs = []
-        y_test = []
-        for (node1, node2, node3) in test_triple_edges:
-            prediction_p = self.compute_prediction(node1, node2, normal=False)
-            prediction_n = self.compute_prediction(node1, node3, normal=False)
-            probs.append(prediction_p)
-            y_test.append(1)
-            probs.append(prediction_n)
-            y_test.append(0)
+        for (node1, node2) in test_set:
+            prediction = self.compute_prediction(node1, node2, normal=False)
+            probs.append(prediction)
             
         probs = np.array(probs)
-        y_test = np.array(y_test)
         
-        return probs, y_test
+        return probs
         
     def train_test_normal_model(self, n_folds = 10, alpha=0.1, n_iter=10, 
-                                with_sampling = False, sampling_factor = 1):
+                                with_sampling = False, edge_removal_perc=0.3):
         """
         Uses cross-validation to train and test the normal factorization model.
         
@@ -493,23 +492,14 @@ class Matrix_Factorization:
         with_sampling: if true, then make the dataset consists of equal number of positive
                     and negative training data. This is mainly to reduce the number
                     of training data.
-        sampling_factor: how much negative samples to use relative to the number of
-                        positive training instances. A factor of 1, will use
-                        1 * the number of positive instances = number of negative training examples.
+        edge_removal_perc: the percentage of edges to hide for testing.
                         
         Returns:
         --------
         [mean_fpr, mean_tpr, mean_auc], [mean_prec, mean_recall, mean_pr_auc]
         """
-        
-        if not with_sampling:
-            edges = gu.build_U(self.G.nodes())
-        else:
-            edges = gu.build_small_U(self.G)
-            
-        Y = gu.build_Y(self.G, edges)
-        X, Y = shuffle(edges, Y, random_state=self.seed)
-        kfold = cross_validation.KFold(len(X), n_folds=n_folds, random_state=self.seed)
+        random.seed(self.seed)
+        kfold = n_folds
     
         mean_tpr = 0.0
         mean_fpr = np.linspace(0, 1, 100)
@@ -526,21 +516,27 @@ class Matrix_Factorization:
         
         mean_recall = mean_prec = 0.0
 
-        for train, test in kfold:
+        for iter in xrange(n_folds):
+            
+            random_state = random.randint(0,1000)
+            train_set, y_train, test_set, y_test = gu.get_train_test_sets(self.G, edge_removal_perc, with_sampling, random_state)
+            X_train, Y_train = shuffle(train_set, y_train, random_state=random_state)
+            X_test, Y_test = shuffle(test_set, y_test, random_state=random_state)
+            
             self.initialize_n_params()
-            self.optimize_n(X[train], Y[train], alpha=alpha, n_iter=n_iter)
-            probas = self.predict_proba(X[test], using_normal=True)
-            fpr, tpr, thresholds = roc_curve(Y[test], probas)
+            self.optimize_n(X_train, Y_train, alpha=alpha, n_iter=n_iter)
+            probas = self.predict_proba(X_test, using_normal=True)
+            fpr, tpr, thresholds = roc_curve(Y_test, probas)
             mean_tpr += interp(mean_fpr, fpr, tpr)
             mean_tpr[0] = 0.0
             all_aucs.append( auc(fpr, tpr) )
             
-            precision, recall, average_precision = testing_utils.get_PR_curve_values(Y[test], probas)
+            precision, recall, average_precision = testing_utils.get_PR_curve_values(Y_test, probas)
             all_prec[i] =  precision
             all_rec[i] = recall
             all_aucs_pr.append( average_precision )
             
-            all_y_test.extend(Y[test])
+            all_y_test.extend(Y_test)
             all_props.extend(probas)
             
             i += 1
@@ -548,12 +544,12 @@ class Matrix_Factorization:
         all_aucs = np.array(all_aucs)
         all_aucs_pr = np.array(all_aucs_pr)
         
-        mean_tpr /= len(kfold)
+        mean_tpr /= kfold
         mean_tpr[-1] = 1.0
         mean_auc = auc(mean_fpr, mean_tpr)
         
-        mean_prec, mean_recall, _ = testing_utils.get_PR_curve_values(all_y_test, all_props)
-        mean_pr_auc = np.mean(all_aucs_pr)
+        mean_prec, mean_recall, mean_pr_auc = testing_utils.get_PR_curve_values(all_y_test, all_props)
+#         mean_pr_auc = np.mean(all_aucs_pr)
         all_prec['mean'] = mean_prec
         all_rec['mean'] = mean_recall
         all_aucs_pr_d['mean'] = mean_pr_auc
@@ -571,7 +567,7 @@ class Matrix_Factorization:
         return [mean_fpr, mean_tpr, mean_auc], [mean_prec, mean_recall, mean_pr_auc], all_curves
         
         
-    def train_test_ranking_model(self, n_folds = 10, alpha=0.1, n_iter=10):
+    def train_test_ranking_model(self, n_folds = 10, alpha=0.1, n_iter=10, edge_removal_perc=0.3, with_sampling = False):
         """
         Uses cross-validation to train and test the ranking factorization model.
         
@@ -585,24 +581,9 @@ class Matrix_Factorization:
         --------
         [mean_fpr, mean_tpr, mean_auc], [mean_prec, mean_recall, mean_pr_auc]
         """
+        random.seed(self.seed)
+        kfold = n_folds
         
-        #construct pairs of nodes
-        triple_edges = []
-        A = nx.adj_matrix(self.G)
-        A = np.array(A)
-        
-        for index, node in enumerate(self.G.nodes()):
-            positives = np.nonzero(A[index] == 1)[0]
-            negatives = np.nonzero(A[index] == 0)[0]
-            for p in positives:
-                node_p = self.index_to_node[p]
-                for n in negatives:
-                    node_n = self.index_to_node[n]
-                    triple_edges.append( (node, node_p, node_n) )
-                    
-        X = shuffle(triple_edges, random_state=0)
-        
-        kfold = cross_validation.KFold(len(X), n_folds=n_folds, random_state=self.seed)
     
         mean_tpr = 0.0
         mean_fpr = np.linspace(0, 1, 100)
@@ -619,10 +600,16 @@ class Matrix_Factorization:
         
         mean_recall = mean_prec = 0.0
 
-        for train, test in kfold:
+        for iter in xrange(n_folds):
+            random_state = random.randint(0,1000)
+            train_set, y_train, test_set, y_test = gu.get_train_test_sets(self.G, edge_removal_perc, with_sampling, random_state)
+            X_train, Y_train = shuffle(train_set, y_train, random_state=random_state)
+            train_quads = gu.get_train_quads(X_train, Y_train)
+            train_quads = shuffle(train_quads, random_state=random_state)
+            
             self.initialize_r_params()
-            self.optimize_r(X[train], alpha=alpha, n_iter=n_iter)
-            probas, y_test = self.predict_proba_r(X[test])
+            self.optimize_r(train_quads, alpha=alpha, n_iter=n_iter)
+            probas = self.predict_proba_r(test_set)
             fpr, tpr, thresholds = roc_curve(y_test, probas)
             mean_tpr += interp(mean_fpr, fpr, tpr)
             mean_tpr[0] = 0.0
@@ -642,12 +629,12 @@ class Matrix_Factorization:
         all_aucs = np.array(all_aucs)
         all_aucs_pr = np.array(all_aucs_pr)
         
-        mean_tpr /= len(kfold)
+        mean_tpr /= kfold
         mean_tpr[-1] = 1.0
         mean_auc = auc(mean_fpr, mean_tpr)
         
-        mean_prec, mean_recall, _ = testing_utils.get_PR_curve_values(all_y_test, all_props)
-        mean_pr_auc = np.mean(all_aucs_pr)
+        mean_prec, mean_recall, mean_pr_auc = testing_utils.get_PR_curve_values(all_y_test, all_props)
+#         mean_pr_auc = np.mean(all_aucs_pr)
         all_prec['mean'] = mean_prec
         all_rec['mean'] = mean_recall
         all_aucs_pr_d['mean'] = mean_pr_auc
@@ -666,7 +653,8 @@ class Matrix_Factorization:
         return [mean_fpr, mean_tpr, mean_auc], [mean_prec, mean_recall, mean_pr_auc], all_curves
         
         
-        
+    
+
 if __name__ == '__main__':
     main()        
         

@@ -3,22 +3,28 @@ import numpy as np
 import testing_utils
 import unsupervised_methods as unmethods
 import supervised_methods as smethods
-
+import random
+import graph_utils
+import datasets_stats
+from sklearn import linear_model
+from sklearn.neural_network import BernoulliRBM
+from sklearn.pipeline import Pipeline
     
-def unupservised_method(method_name, G, X_nodes, options, removal_perc=0.3,
-                         n_folds=10, undersample=False):
+def unsupservised_method(method_name, G, X_nodes, options, removal_perc=0.3,
+                         n_folds=10, undersample=False, seed=0):
     """
     Returns the the AU-ROCs and AU-PRs of the n_folds for the specified unsupervised method.
     Method names: CN, Salton, Jacard, Sorensen, HP, HD, LHN1, PA, AA, RA, LP, Katz, RWR, LRW, SPRW
-    The methods that require parameters:
+    The abbrevations of follow those mentioned in the Experiementation chapter in the thesis.
+    
+    The methods that require parameters (see Parameters below):
         LP: options['lp_katz_h'] damping factor.
         RWR: options['rwr_alpha'] the probability of continuing the random walk.
         LRW: options['lrw_nSteps'] number of steps to run the walk.
         SPRW: options['lrw_nSteps'] number of steps to run the walk.
     
-    e.g.:
-    
-    unupservised_method(method_name, G, X_nodes, options, removal_perc=0.3,
+    usage:
+    unsupservised_method(method_name, G, X_nodes, options, removal_perc=0.3,
                          n_folds=10, undersample=False)    
     
     Parameters:
@@ -32,6 +38,8 @@ def unupservised_method(method_name, G, X_nodes, options, removal_perc=0.3,
     :type X_nodes: 2D numpy array.
     :param X_nodes: each row of this matrix is the feature vector of a node. 
                     The nodes have the same index as in the networkx graph G.
+                    Add the node attributes if you want to run the unsupervised methods on
+                    Social-Attribute Networks.
                     
     :type options: python dictionary.
     :param options: the options needed for some methods.
@@ -43,7 +51,10 @@ def unupservised_method(method_name, G, X_nodes, options, removal_perc=0.3,
     :param n_folds: number of folds.
     
     :type undersample: boolean.
-    :param undersample: should it use undersampling too.
+    :param undersample: if it should only use a part of the negative edges to testing and not all of them.
+    
+    :type seed: int.
+    :param seed: the see for the traning and testing edges.
     
     """
     node_to_index = testing_utils.get_node_to_index(G)
@@ -55,26 +66,26 @@ def unupservised_method(method_name, G, X_nodes, options, removal_perc=0.3,
         extended_graphs = True
         
     roc_aucs, pr_aucs = unmethods.calculate_method(method_name, G, X_nodes,
-                        n_folds, node_to_index, removal_perc, options, undersample, extended_graphs)
+                        n_folds, node_to_index, removal_perc, options, undersample, extended_graphs, random_state=seed)
     
     return roc_aucs, pr_aucs
 
-def classifier_method(clf, G, X_nodes, options, 
+def classifier_method(clf, G, X_nodes, options, plot_file_path, 
                       enabled_features = [[1], [2], [1,2]], tests_names = ["local", "global", 'loc+glob'],
-                       plot_file_path, removal_perc=0.3, n_folds=10, undersample=False):
+                      removal_perc=0.3, n_folds=10, undersample=False, seed=0):
     """
     Use a classifier (e.g. Logistic Regression) from scikit-learn to perform supervised link prediction.
+    
     The methods that require parameters:
         LP: options['lp_katz_h'] damping factor.
         RWR: options['rwr_alpha'] the probability of continuing the random walk.
         LRW: options['lrw_nSteps'] number of steps to run the walk.
         SPRW: options['lrw_nSteps'] number of steps to run the walk.
         
-    e.g:
-    
+    Usage:
     classifier_method(clf, G, X_nodes, options, 
                       enabled_features = [[1], [2], [1,2]], tests_names = ["local", "global", 'loc+glob'],
-                       plot_file_path, removal_perc=0.3, n_folds=10, undersample=False)
+                       plot_file_path, removal_perc=0.3, n_folds=10, undersample=False, seed=0)
         
     Parameters:
     -----------
@@ -114,20 +125,34 @@ def classifier_method(clf, G, X_nodes, options,
     
     :type undersample: boolean.
     :param undersample: should it use undersampling too.
-        
+    
+    :type seed: int.
+    :param seed: the seed for the traning and testing edges.
+    
+    Returns:
+    --------
+    It outputs a plot for the ROC and PR curves. It also outputs the TPR, FPR, Precision, Recall values as numpy arrays, 
+    so you can plot the ROC and PR curves as you want.
     
     """
     
     node_to_index = testing_utils.get_node_to_index(G)
-    testing_utils.train_with_stratified_cross_validation(G=G, X_nodes=X_nodes, node_to_index=node_to_index,
+    testing_utils.train_with_stratified_cross_validation_new_protocol(G=G, X_nodes=X_nodes, node_to_index=node_to_index,
                                             clf=clf, n_folds=n_folds, tests_names=tests_names,
                                             params=options, plot_file_name=plot_file_path, edge_removal_perc=removal_perc, 
-                                            enabled_features=enabled_features, undersample=undersample, extend_graph=False)
+                                            enabled_features=enabled_features, undersample=undersample, extend_graph=False, random_state=seed)
 
-def matrix_fact_traditional(G, X, test_name, options, plot_file_name):
+def matrix_fact_traditional(G, X, test_name, options, plot_file_name, edge_removal_perc=0.3, seed=0):
     """
     Use traditional matrix factorization model.
     
+    usage: 
+    
+    matrix_fact_traditional(G, X, test_name, options, plot_file_name, edge_removal_perc=0.3, seed=0)
+    
+    Parameters:
+    -------------
+    
     :type G: networkx graph.
     :param G: the graph.
     
@@ -148,12 +173,21 @@ def matrix_fact_traditional(G, X, test_name, options, plot_file_name):
     :type plot_file_name: python string.
     :param plot_file_name: where to save the ROC/PR plots.
     
+    :type edge_removal_perc: float.
+    :param edge_removal_perc: the percentage of edges to be removed to be used in test.
     
+    :type seed: int.
+    :param seed: the see for the traning and testing edges.
+    
+    Returns:
+    --------
+    It outputs a plot for the ROC and PR curves. It also outputs the TPR, FPR, Precision, Recall values as numpy arrays, 
+    so you can plot the ROC and PR curves as you want.
     """
     rocs = []
     prs = []
 
-    all_curves = smethods.train_matrix_fact_normal(G, X, test_name, options)
+    all_curves = smethods.train_matrix_fact_normal(G, X, test_name, options, edge_removal_perc, seed)
     roc = all_curves["roc"]
     pr_cur = all_curves["pr"]
     roc = all_curves["roc"]
@@ -164,10 +198,12 @@ def matrix_fact_traditional(G, X, test_name, options, plot_file_name):
     testing_utils.draw_pr_curves(prs, plot_file_name[0:-4] + "_PR.pdf")
 
 
-def matrix_fact_auc_opti(G, X, test_name, options, plot_file_name):
+def matrix_fact_auc_opti(G, X, test_name, options, plot_file_name, edge_removal_perc, seed=0):
     """
     Use auc-optimized matrix factorization model.
     
+    usage: matrix_fact_auc_opti(G, X, test_name, options, plot_file_name, edge_removal_perc, seed=0)
+    
     :type G: networkx graph.
     :param G: the graph.
     
@@ -189,12 +225,21 @@ def matrix_fact_auc_opti(G, X, test_name, options, plot_file_name):
     :type plot_file_name: python string.
     :param plot_file_name: where to save the ROC/PR plots.
     
+    :type edge_removal_perc: float.
+    :param edge_removal_perc: the percentage of edges to be removed to be used in test.
     
+    :type seed: int.
+    :param seed: the see for the traning and testing edges.
+    
+    Returns:
+    --------
+    It outputs a plot for the ROC and PR curves. It also outputs the TPR, FPR, Precision, Recall values as numpy arrays, 
+    so you can plot the ROC and PR curves as you want.
     """
     rocs = []
     prs = []
 
-    all_curves = smethods.train_matrix_fact_ranking(G, X, test_name, options)
+    all_curves = smethods.train_matrix_fact_ranking(G, X, test_name, options, edge_removal_perc, seed)
     roc = all_curves["roc"]
     pr_cur = all_curves["pr"]
     roc = all_curves["roc"]
@@ -207,7 +252,7 @@ def matrix_fact_auc_opti(G, X, test_name, options, plot_file_name):
 
 
 
-def supervised_random_walk(G, X, k=10, delta=5, alpha=0.5, iter=1, test_name, plot_file_name):
+def supervised_random_walk(G, X, test_name, plot_file_name, k=10, delta=5, alpha=0.5, iter=1, psiClass=None):
     """
     Link prediction with supervised random walk.
     
@@ -239,12 +284,17 @@ def supervised_random_walk(G, X, k=10, delta=5, alpha=0.5, iter=1, test_name, pl
     
     :type iter: int
     :param iter: gradient desecent epochs.
+    
+    Returns:
+    --------
+    It outputs a plot for the ROC and PR curves. It also outputs the TPR, FPR, Precision, Recall values as numpy arrays, 
+    so you can plot the ROC and PR curves as you want.
     """
     
     rocs = []
     prs = []
 
-    all_curves, _, _ = smethods.train_with_srw(G, X, test_name, k, delta, alpha, iter)
+    all_curves, _, _ = smethods.train_with_srw(G, X, test_name, k, delta, alpha, iter, psiClass)
     roc = all_curves["roc"]
     pr_curv = all_curves['pr']
     rocs.append(roc)
@@ -254,13 +304,129 @@ def supervised_random_walk(G, X, k=10, delta=5, alpha=0.5, iter=1, test_name, pl
 
     
 
+def get_train_test_split(G, fold_number, removal_perc=0.3, undersample=False, seed = 0):
+    """
+    Gives the train test split that is used for the other methods, for a specific fold and specific seed.
+    
+    Usage:
+    get_train_test_split(G, fold_number, removal_perc=0.3, undersample=False, seed = 0)
+    
+    Parameters:
+    -----------
+    :type G: networkx graph.
+    :param G: the graph. 
+    
+    :type removal_perc: float.
+    :param removal_perc: the percentage of edges to be removed to be used in test.
+    
+    :type fold_number: int.
+    :param fold_number: the fold number invovled in the train/test split.
+    
+    :type undersample: boolean.
+    :param undersample: should it use undersampling too.
+    
+    :type seed: int.
+    :param seed: the seed for the traning and testing edges.
+    
+    Returns:
+    ---------
+    G: networkx object which represents the graph used for training.
+    test_set: a list of edges which represent the test set.
+    Y: the ground truth of the test edges.
+    """
+    random.seed(seed)
+    random_state = 0
+    for i in xrange(fold_number):
+        random_state = random.randint(0,1000)
+    Gx, test_set, Y, pp_list, np_list, nn_list = graph_utils.prepare_graph_for_training_new_protocl(G, removal_perc, undersample, random_state = random_state)
+
+    return Gx, test_set, Y
 
 
+def generate_correlation_plot(X, labels, path):
+    """
+    Generates a correlation plot.
+    
+    Usage:
+    
+    generate_correlation_plot(X, labels, path)
+    
+    Parameters:
+    -----------
+    X: the matrix that contains the random variables and their values.
+    labels: a python list that contains names (strings) for each random variable, eg ['R1', 'R2'] if X's shape is (2,2).
+    path: the path where to save the plot.
+    """
+    datasets_stats.save_correlation_plot(X, labels, path)
 
+def calculate_AUPR(y_test, probs):
+    """
+    Returns AUPR
+    
+    usage:
+    calculate_AUPR(y_test, probs)
+    
+    Parameters:
+    -----------
+    y_test: a numpy array that contains the ground truth for the test samples.
+    probs: a numpy array that contains the predicated confidence scores for the test samples.
+    
+    Returns:
+    ---------
+    the AUPR as a float.
+    """
+    
+    return testing_utils.compute_PR_auc(y_test, probs)
 
+def calculate_AUROC(y_test, probs):
+    """
+    Returns AUROC
+    
+    usage:
+    calculate_AUROC(y_test, probs)
+    
+    Parameters:
+    -----------
+    y_test: a numpy array that contains the ground truth for the test samples.
+    probs: a numpy array that contains the predicated confidence scores for the test samples.
+    
+    Returns:
+    ---------
+    the AUROC as a float.
+    """
+    return testing_utils.compute_AUC(y_test, probs)
 
-
-
+def get_dbn(n_components, n_iter, n_RBMs):
+    """
+    Returns a Deep Belief Network.
+    
+    Usage:
+    get_dbn(n_components, n_iter, n_RBMs)
+    
+    Parameters:
+    -----------
+    n_components: number of hidden units in each RBM.
+    n_iter: numb of iterations
+    n_RBMs: numb of RBMs to use.
+    
+    
+    Returns:
+    --------
+    a scikit learn classifier object.
+    """
+    
+    steps = []
+    
+    logistic = linear_model.LogisticRegression()
+    
+    for i in xrange(n_RBMs):
+        rbm = BernoulliRBM(n_components=n_components, n_iter=n_iter)
+        name = "rbm" + str(i)
+        steps.append( (name, rbm) )
+    
+    steps.append( ('logistic', logistic) )
+    rbm_logistic_clf = Pipeline(steps=steps) 
+    return rbm_logistic_clf
 
 
 

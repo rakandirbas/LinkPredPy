@@ -41,7 +41,7 @@ def general_learner(clf, X, Y, X_pp, Y_pp, X_pp_flag, test_name, random_state=0)
 A wrapper for supervised random walk
 """
 
-def train_with_srw(G, X, test_name,  k=10, delta=5, alpha=0.5, iter=1):
+def train_with_srw(G, X, test_name,  k=10, delta=5, alpha=0.5, iter=1, psiClass=None):
     """
     Applies the Supervised Random Walk method
     
@@ -56,6 +56,9 @@ def train_with_srw(G, X, test_name,  k=10, delta=5, alpha=0.5, iter=1):
              of these future/destination nodes are friends of current friends). A candidate source node
              that has a degree above k, and made future friends above delta, then becomes a source node
              for training.
+    psiClass: (psi stands for the greek letter, its purpose is synoymous to the psi notation in the SRW paper) 
+                an implementation of the light_srw.RAW_PSI class. To be used if the user wants handle a specific dataset,
+                like when the edge creation time is known.
     alpha: restart probability.
     iter: gradient desecent epochs.
     
@@ -65,7 +68,10 @@ def train_with_srw(G, X, test_name,  k=10, delta=5, alpha=0.5, iter=1):
     typical_auc: an AUC calculated using the same way of calculating the AUC with cross-validation
     my_auc: an AUC calculated using the mean auc of all the testing source nodes. 
     """
-    psi = light_srw.GeneralPSI(G=G, X=X, k=k, delta=delta)
+    if psiClass is None:
+        psi = light_srw.GeneralPSI(G=G, X=X, k=k, delta=delta)
+    else:
+        psi = psiClass(G=G, X=X, k=k, delta=delta)
     srw_obj = light_srw.SRW(psi=psi, alpha=alpha)
     srw_obj.optimize(n_iter=iter)
     
@@ -118,8 +124,8 @@ def train_with_srw(G, X, test_name,  k=10, delta=5, alpha=0.5, iter=1):
     mean_auc2 = np.mean(aucs)
     
     all_aucs_pr = np.array(all_aucs_pr)
-    mean_prec, mean_recall, _ = tstu.get_PR_curve_values(all_y_test, all_props)
-    mean_pr_auc = np.mean(all_aucs_pr)
+    mean_prec, mean_recall, mean_pr_auc = tstu.get_PR_curve_values(all_y_test, all_props)
+#     mean_pr_auc = np.mean(all_aucs_pr)
     all_prec['mean'] = mean_prec
     all_rec['mean'] = mean_recall
     all_aucs_pr_d['mean'] = mean_pr_auc
@@ -145,7 +151,7 @@ def train_with_srw(G, X, test_name,  k=10, delta=5, alpha=0.5, iter=1):
 A wrapper for matrix factorization
 """
 
-def train_matrix_fact_normal(G, X, test_name, options):
+def train_matrix_fact_normal(G, X, test_name, options, edge_removal_perc=0.3, seed=0):
     """
     Train the normal matrix fact model.
     
@@ -170,10 +176,10 @@ def train_matrix_fact_normal(G, X, test_name, options):
     n_iter = options['mf_n_iter']
     with_sampling = options['mf_with_sampling']
     
-    MF = matrix_fact.Matrix_Factorization(k = k, G=G, X=X )
+    MF = matrix_fact.Matrix_Factorization(k = k, G=G, X=X, random_state=seed )
 
     roc_data, pr_data, n_folds_curves = MF.train_test_normal_model(n_folds = n_folds, 
-                    alpha=alpha, n_iter=n_iter, with_sampling = with_sampling)
+                    alpha=alpha, n_iter=n_iter, with_sampling = with_sampling, edge_removal_perc=edge_removal_perc)
     fpr, tpr, auc = roc_data
     mean_prec, mean_recall, mean_pr_auc = pr_data
     roc_curv = (test_name, fpr, tpr, auc)
@@ -183,7 +189,7 @@ def train_matrix_fact_normal(G, X, test_name, options):
     return all_curves
 
 
-def train_matrix_fact_ranking(G, X, test_name, options):
+def train_matrix_fact_ranking(G, X, test_name, options, edge_removal_perc=0.3, seed=0):
     """
     Train the ranking matrix fact model.
     
@@ -206,10 +212,10 @@ def train_matrix_fact_ranking(G, X, test_name, options):
     alpha = options['mf_alpha']
     n_iter = options['mf_n_iter']
     
-    MF = matrix_fact.Matrix_Factorization(k = k, G=G, X=X )
+    MF = matrix_fact.Matrix_Factorization(k = k, G=G, X=X,random_state=seed )
 
     roc_data, pr_data, n_folds_curves = MF.train_test_ranking_model(n_folds = n_folds, 
-                    alpha = alpha, n_iter = n_iter)
+                    alpha = alpha, n_iter = n_iter, edge_removal_perc=edge_removal_perc)
 
     fpr, tpr, auc = roc_data
     mean_prec, mean_recall, mean_pr_auc = pr_data

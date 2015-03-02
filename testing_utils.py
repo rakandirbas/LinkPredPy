@@ -914,9 +914,9 @@ def train_with_stratified_cross_validation(G, X_nodes, node_to_index, clf, n_fol
         print "[Stratified] PR auc: %f\n" % (the_pr_curve[3])
         rocs.append(the_roc_curve)
         prs.append(the_pr_curve)
-        draw_pr_curves_n_folds(n_folds, test_name, all_prec, all_rec, all_aucs_pr_d, random_prec, plot_file_name[:-4]+"_folds_"+test_name+"_PR_.png")
+        draw_pr_curves_n_folds(n_folds, test_name, all_prec, all_rec, all_aucs_pr_d, random_prec, plot_file_name[:-4]+"_folds_"+test_name+"_PR_.pdf")
     draw_rocs(rocs, plot_file_name)
-    draw_pr_curves(prs, plot_file_name[:-4]+"_PR_.png")
+    draw_pr_curves(prs, plot_file_name[:-4]+"_PR_.pdf")
             
             
             
@@ -1009,10 +1009,169 @@ def make_correlation_dataset(G, node_to_index, params, enabled_features=[1]):
     
     
     
+def train_with_stratified_cross_validation_new_protocol(G, X_nodes, node_to_index, clf, n_folds, tests_names,
+                                            params, plot_file_name, edge_removal_perc=0.3, 
+                                            enabled_features=[[1]], undersample=False, extend_graph=False, random_state=0):
+    
+    """
+    This is like the X_pp flag #3. Here we will only use the Xpp for training
+    and X for testing. We do that n_folds times. i.e. we remove some dyads (X) and keep them 
+    for testing and the others are used for training. We repeat this process n_folds times
+    with different dyads removed in each time.
+    
+    Parameters:
+    -----------
+    G: networkx graph object.
+    X_nodes: the nodes attributes feature matrix.
+    node_to_index: dictionary that maps from node name to its index.
+    clf: the classifier to use for training.
+    n_folds: number of cross validation folds.
+    tests_names: a list that contains the names of each test with respect
+                 to each dataset in Xs (i.e. the auc curve name).
+    params: a dictionary that holds needed parameters.
+            Here we need the following: params['rwr_alpha'], 
+            params['lrw_nSteps']. (you can omit this parameter if you don't need the global features)
+    plot_file_name: the name of the figure to be saved. (you can prepend the path as well).
+    """
+    
+    print '##############Stratiefied cross-validation############'
+    
+    rocs = []
+    prs = []
+    t = timer.Timerx()
+    
+    random.seed(random_state)
+    
+    for set, test_name in zip(enabled_features,tests_names):
+        mean_tpr = 0.0
+        mean_fpr = np.linspace(0, 1, 100)
+    
+        all_aucs = []
+        all_aucs_pr = []
+        
+        all_y_test = []
+        all_props = []
+        all_prec = {}
+        all_rec = {}
+        all_aucs_pr_d = {}
+        i = 0
+        
+        random.seed(random_state)
+        
+        t.start()
+        for i in xrange(n_folds):
+            seed = random.randint(0,1000)
+            Gx, U, Y, pp_list, np_list, nn_list = prepare_graph_for_training_new_protocl(G, edge_removal_perc, undersample, seed)
+#             Y_pp = np.ones( len(pp_list) )
+#             Y_np = np.ones( len(np_list) )
+#             Y_nn = np.zeros( len(nn_list) )
+            
+            if extend_graph:
+                Gx, original_degrees = get_extended_graph(Gx, X_nodes)
+                original_degrees_list = gsim.get_degrees_list(Gx, original_degrees)
+            else:
+                original_degrees_list = None
+        
+            degrees = gsim.get_degrees_list(Gx)
+            A = nx.adj_matrix(Gx)
+            A = np.asarray(A)
+            
+            X_pp = None
+            X_np = None
+            X_nn = None
+            X_tst = None
+            
+            for feature_flag in set:
+                if feature_flag == 1:#local topo features 
+                    X_pp = add_local_topo_features(X_pp, A, pp_list, degrees, G.nodes(), original_degrees_list)
+                    X_nn = add_local_topo_features(X_nn, A, nn_list, degrees, G.nodes(), original_degrees_list)
+                    X_tst = add_local_topo_features(X_tst, A, U, degrees, G.nodes(), original_degrees_list)
+                elif feature_flag == 2:# global topo features
+                    X_pp = add_global_features(Gx, X_pp, pp_list, node_to_index, params)
+                    X_nn = add_global_features(Gx, X_nn, nn_list, node_to_index, params)
+                    X_tst = add_global_features(Gx, X_tst, U, node_to_index, params)
+                elif feature_flag == 3:#node attributes
+                    X_pp = add_raw_feature(X_pp, pp_list, X_nodes, G.nodes(), node_to_index=node_to_index)
+                    X_nn = add_raw_feature(X_nn, nn_list, X_nodes, G.nodes(), node_to_index=node_to_index)
+                    X_tst = add_raw_feature(X_tst, U, X_nodes, G.nodes(), node_to_index=node_to_index)
+                elif feature_flag == 4:#raw features
+                    X_pp = add_raw_feature(X_pp, pp_list, A, G.nodes(), node_to_index=node_to_index)
+                    X_nn = add_raw_feature(X_nn, nn_list, A, G.nodes(), node_to_index=node_to_index)
+                    X_tst = add_raw_feature(X_tst, U, A, G.nodes(), node_to_index=node_to_index)
+    
+#             X_pp, y_pp = shuffle(X_pp, Y_pp, random_state=random_state)
+#             X_np, y_np = shuffle(X_np, Y_np, random_state=random_state)
+#             X_nn, y_nn = shuffle(X_nn, Y_nn, random_state=random_state)
+
+            X_pp, X_nn, X_tst = scale_three_sets(X_pp, X_nn, X_tst)
+            
+            X_train = np.vstack( (X_pp, X_nn) )
+            Y_pp = np.ones( len(pp_list) )
+            Y_nn = np.zeros( len(nn_list) )
+            y_train = np.concatenate( (Y_pp, Y_nn) )
+            X_train, y_train = shuffle(X_train, y_train, random_state=random_state)
+            
+            X_test = X_tst
+            y_test = Y
+            X_test, y_test = shuffle(X_test, y_test, random_state=random_state)
+
+            probas_ = clf.fit(X_train, y_train).predict_proba(X_test)
+            fpr, tpr, thresholds = roc_curve(y_test, probas_[:, 1])
+            mean_tpr += interp(mean_fpr, fpr, tpr)
+            all_aucs.append( auc(fpr, tpr) )
+            mean_tpr[0] = 0.0
+            
+            precision, recall, average_precision = get_PR_curve_values(y_test, probas_[:, 1])
+            all_prec[i] =  precision
+            all_rec[i] = recall
+            all_aucs_pr_d[i] = average_precision
+            all_aucs_pr.append( average_precision )
+            
+            all_y_test.extend(y_test)
+            all_props.extend(probas_[:, 1])
+            
+            i += 1
+            
+        
+        all_aucs = np.array(all_aucs)
+        all_aucs_pr = np.array(all_aucs_pr)
+        
+        mean_tpr /= n_folds
+        mean_tpr[-1] = 1.0
+        mean_auc = auc(mean_fpr, mean_tpr)
+        
+        mean_prec, mean_recall, mean_pr_auc =  get_PR_curve_values(all_y_test, all_props)
+#         mean_pr_auc = np.mean(all_aucs_pr)
+        all_prec['mean'] = mean_prec
+        all_rec['mean'] = mean_recall
+        all_aucs_pr_d['mean'] = mean_pr_auc
+        all_y_test = np.array(all_y_test)
+        random_prec = all_y_test[all_y_test.nonzero()].size / all_y_test.size
+        
+        print "Stratified Cross-validation ROC auc stats: Testname: %s,\
+         STD: %f, Variance: %f.\n" % (test_name, np.std(all_aucs), np.var(all_aucs))
+        
+        print "Stratified Cross-validation PR auc stats: Testname: %s,\
+         STD: %f, Variance: %f.\n" % (test_name, np.std(all_aucs_pr), np.var(all_aucs_pr))
+        
+        ####
+#         mean_fpr, mean_tpr, _ = roc_curve(all_y_test, all_props)
+#         mean_auc = auc(mean_fpr, mean_tpr)
+        ####
+         
+        the_roc_curve = (test_name, mean_fpr, mean_tpr, mean_auc)
+        the_pr_curve = (test_name, mean_prec, mean_recall, mean_pr_auc)
+        all_curves = {"roc":the_roc_curve, "pr": the_pr_curve, "all_prec": all_prec, "all_rec": all_rec, "all_auc_pr": all_aucs_pr_d}
+        print "[Stratified] Test name: %s, time: %s, ROC auc: %f\n" % (test_name, t.stop(), the_roc_curve[3])
+        print "[Stratified] PR auc: %f\n" % (the_pr_curve[3])
+        rocs.append(the_roc_curve)
+        prs.append(the_pr_curve)
+#         draw_pr_curves_n_folds(n_folds, test_name, all_prec, all_rec, all_aucs_pr_d, random_prec, plot_file_name[:-4]+"_folds_"+test_name+"_PR_.pdf")
+    draw_rocs(rocs, plot_file_name)
+    draw_pr_curves(prs, plot_file_name[:-4]+"_PR_.pdf")    
     
     
-    
-    
+
     
     
 

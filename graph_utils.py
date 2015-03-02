@@ -570,33 +570,194 @@ def get_node_to_index(G):
     return node_to_index
 
 
-def get_undersampled_nn(G, pp_size):
+def get_undersampled_nn(G, pp_size, random_state=0):
     """
     Returns a the list nn that contains an undersampled list of negative dyads.
     """
     
-    nn_list = []
-    sample_size = pp_size * 2
+#     nn_list = []
+#     sample_size = pp_size * 2
+#     
+#     A = nx.adj_matrix(G)
+#     A = np.array(A)
+#     
+#     nonedges = np.transpose(np.nonzero(A == 0))
+#     nonedges = shuffle(nonedges, random_state=0)
+#     
+#     index_to_node = {}
+#     for i, node in enumerate(G.nodes()):
+#         index_to_node[i] = node
+#     
+#     for x, (i, j) in enumerate(nonedges):
+#         if x < sample_size:
+#             node1 = index_to_node[i]
+#             node2 = index_to_node[j]
+#             nn_list.append( (node1, node2) )
+#         else:
+#             break
+#         
+#     return nn_list
+    random.seed(random_state)
+    if len(G.nodes()) < 2000:
+        nodes = G.nodes()
+    else:
+        nodes = random.sample(G.nodes(), 2000)
+
+    nn_list = [pair for pair in IT.combinations(nodes, 2)
+               if not G.has_edge(*pair)]
     
-    A = nx.adj_matrix(G)
-    A = np.array(A)
-    
-    nonedges = np.transpose(np.nonzero(A == 0))
-    nonedges = shuffle(nonedges, random_state=0)
-    
-    index_to_node = {}
-    for i, node in enumerate(G.nodes()):
-        index_to_node[i] = node
-    
-    for x, (i, j) in enumerate(nonedges):
-        if x < sample_size:
-            node1 = index_to_node[i]
-            node2 = index_to_node[j]
-            nn_list.append( (node1, node2) )
-        else:
-            break
-        
     return nn_list
+
+
+def prepare_graph_for_training_new_protocl(G, removal_perc, undersample=False, random_state = 0):
+    """
+    
+    Parameters:
+    ------------
+    G: networkx graph.
+    dyad_testset_perc: the percentage of dyads to keep as test set. (highest is 1.0 and lowest 0.0)
+    undersample: to either reduce the number of negative examples and make them equal to the number 
+            of positive examples or not.
+    
+    Returns:
+    ------------
+    Gx: networkx graph where a percentage of its edges were removed.
+    U: a list of dyads that are used as a test set.
+    Y: a list of labels for the dyads.
+    pp_list: list of dyads that were positive and remained positive
+    np_list: list of dyads that were negative and become positive
+    nn_list: list of dyads that were negative and remained negative
+    """
+    random.seed(random_state)
+    
+    G = G.copy()
+    pp_list = [] # list of dyads that were positive and remained positive
+    np_list = [] # list of dyads that were negative and become positive
+    nn_list = [] # list of dyads that were negative and remained negative
+    
+    n_edges = G.number_of_edges()
+    n_nodes = G.number_of_nodes()
+    n_dyads = (n_nodes*(n_nodes-1))/2
+
+    np_size = np.ceil(removal_perc * n_edges)
+    pp_size = n_edges - np_size
+    nn_size = n_dyads - n_edges
+    nn_size = nn_size + np_size
+    
+    if not undersample:
+        nn_list = [pair for pair in IT.combinations(G.nodes(), 2)
+               if not G.has_edge(*pair)]
+    else:
+        nn_list = get_undersampled_nn(G, pp_size, random_state)
+        
+    removed_edges = random.sample( G.edges(), int(np_size) )
+    G.remove_edges_from(removed_edges)
+    
+    np_list = removed_edges
+    pp_list = np.array(G.edges())
+    random.shuffle(nn_list)
+    
+    
+    #remove x-perc from the nn_list and put it in U for testing
+    
+    
+    if not undersample:
+        nn_test_size = int( np.ceil(removal_perc * len(nn_list)) )
+        nn_test_set = nn_list[0:nn_test_size]
+    else:
+        nn_test_size = int(np_size)
+        nn_test_set = nn_list[0:nn_test_size]
+    
+    
+    U = np_list[:]
+    U.extend(nn_test_set)
+    U = np.array(U)
+    Y = np.zeros( len(np_list) + len(nn_test_set) )
+    Y[0:len(np_list)] = 1
+     
+     
+    if not undersample:
+#         nn_list = nn_list[int(nn_test_size):]
+        nn_list = nn_list
+    else:
+#         nn_list = nn_list[int(nn_test_size):]
+#         nn_list = random.sample(nn_list, int(pp_size))
+        nn_list = nn_list[0: nn_test_size+int(pp_size) ]
+    
+    nn_list.extend(np_list)#add the np_list to the nn_list list
+    
+#     nn_list = random.sample(nn_list, int( len(pp_list) )) #for the sampling experiement to use the same test split with nonsampling
+    
+    nn_list = np.array(nn_list)
+    np_list = np.array(np_list)
+    
+    return G, U, Y, pp_list, np_list, nn_list
+
+
+
+
+
+def get_train_test_sets(G, edge_removal_perc, undersample, random_state):
+    
+    train_set = y_train = test_set = y_test = None
+    
+    Gx, U, Y, pp_list, np_list, nn_list = prepare_graph_for_training_new_protocl(G, edge_removal_perc, undersample, random_state)
+    
+    test_set = U
+    y_test = Y
+    
+    train_set = np.vstack( (pp_list, nn_list) )
+    Y_pp = np.ones( len(pp_list) )
+    Y_nn = np.zeros( len(nn_list) )
+    y_train = np.concatenate( (Y_pp, Y_nn) )
+    
+    return train_set, y_train, test_set, y_test
+
+
+
+def get_train_quads(train_set, y_train):
+    ones_indices = np.nonzero(y_train)[0] #the indices of the samples that are positives.
+    zeros_indices = np.where(y_train==0)[0] #the indices of the samples that are negatives.
+    
+    train_quads = []
+    
+    for positive_index in ones_indices:
+        p_node1, p_node2 = train_set[positive_index]
+        
+        if len(zeros_indices) > 100:
+            sampled_negative_indices = random.sample(zeros_indices, 100)
+        else:
+            sampled_negative_indices = random.sample(zeros_indices, len(zeros_indices))
+            
+        for negative_index in sampled_negative_indices:
+            n_node1, n_node2 = train_set[negative_index]
+            train_quads.append((p_node1, p_node2, n_node1, n_node2))
+            
+            
+    return train_quads
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+
+
+
+
+
+
+
+
 
 
 
