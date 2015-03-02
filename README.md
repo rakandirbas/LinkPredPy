@@ -26,7 +26,7 @@ Each method contains a Docstring. Just use LinkPredPy.classifier_method? with IP
 
 
 Code examples (check examples.py):
-
+```
 import LinkPredPy as lp
 import networkx as nx
 import numpy as np
@@ -78,7 +78,7 @@ G = nx.fast_gnp_random_graph(50, 0.5) #generate a random graph to play with.
 #Gx is the graph that should be used for training
 # print G.number_of_edges(), Gx.number_of_edges()
 
-
+```
 
 
 
