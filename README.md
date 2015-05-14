@@ -5,12 +5,9 @@ Just import the `LinkPredPy.py` script and use one of its methods.
 
 This script has the following five methods:
 
-- `unsupservised_method(method_name, G, X_nodes, options, removal_perc=0.3,`
-                         `n_folds=10, undersample=False, seed=0)`
+- `unsupservised_method(method_name, G, X_nodes, options, removal_perc=0.3, n_folds=10, undersample=False, seed=0)`
 
-- `classifier_method(clf, G, X_nodes, options, plot_file_path, `
-                      `enabled_features = [[1], [2], [1,2]], tests_names = ["local", "global", 'loc+glob'],`
-                      `removal_perc=0.3, n_folds=10, undersample=False, seed=0)`
+- `classifier_method(clf, G, X_nodes, options, plot_file_path, enabled_features = [[1], [2], [1,2]], tests_names = ["local", "global", 'loc+glob'], removal_perc=0.3, n_folds=10, undersample=False, seed=0)`
 
 - `matrix_fact_traditional(G, X, test_name, options, plot_file_name, edge_removal_perc=0.3, seed=0)`
 - `matrix_fact_auc_opti(G, X, test_name, options, plot_file_name, edge_removal_perc, seed=0)`
