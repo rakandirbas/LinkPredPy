@@ -19,10 +19,10 @@ This script has the following five methods:
 - `get_dbn(n_components, n_iter, n_RBMs)`
 
 
-Each method contains a Docstring. Just use LinkPredPy.classifier_method? with IPython for example to get the documentation.
+Each method contains a `Docstring`. Just use `LinkPredPy.classifier_method?` with `IPython` for example to get the documentation.
 
 
-Code examples (check examples.py):
+Code examples (check `examples.py`):
 ```
 import LinkPredPy as lp
 import networkx as nx
