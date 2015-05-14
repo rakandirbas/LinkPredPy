@@ -1,25 +1,25 @@
 LinkPredPy
 ==========
 
-Just import the LinkPredPy.py script and use one of its methods.
+Just import the `LinkPredPy.py` script and use one of its methods.
 
 This script has the following five methods:
 
-- unsupservised_method(method_name, G, X_nodes, options, removal_perc=0.3,
-                         n_folds=10, undersample=False, seed=0)
+- `unsupservised_method(method_name, G, X_nodes, options, removal_perc=0.3,`
+                         `n_folds=10, undersample=False, seed=0)`
 
-- classifier_method(clf, G, X_nodes, options, plot_file_path, 
-                      enabled_features = [[1], [2], [1,2]], tests_names = ["local", "global", 'loc+glob'],
-                      removal_perc=0.3, n_folds=10, undersample=False, seed=0)
+- `classifier_method(clf, G, X_nodes, options, plot_file_path, `
+                      `enabled_features = [[1], [2], [1,2]], tests_names = ["local", "global", 'loc+glob'],`
+                      `removal_perc=0.3, n_folds=10, undersample=False, seed=0)`
 
-- matrix_fact_traditional(G, X, test_name, options, plot_file_name, edge_removal_perc=0.3, seed=0)
-- matrix_fact_auc_opti(G, X, test_name, options, plot_file_name, edge_removal_perc, seed=0)
-- supervised_random_walk(G, X, test_name, plot_file_name, k=10, delta=5, alpha=0.5, iter=1, psiClass=None)
-- get_train_test_split(G, fold_number, removal_perc=0.3, undersample=False, seed = 0)
-- generate_correlation_plot(X, labels, path)
-- calculate_AUPR(y_test, probs)
-- calculate_AUROC(y_test, probs)
-- get_dbn(n_components, n_iter, n_RBMs)
+- `matrix_fact_traditional(G, X, test_name, options, plot_file_name, edge_removal_perc=0.3, seed=0)`
+- `matrix_fact_auc_opti(G, X, test_name, options, plot_file_name, edge_removal_perc, seed=0)`
+- `supervised_random_walk(G, X, test_name, plot_file_name, k=10, delta=5, alpha=0.5, iter=1, psiClass=None)`
+- `get_train_test_split(G, fold_number, removal_perc=0.3, undersample=False, seed = 0)`
+- `generate_correlation_plot(X, labels, path)`
+- `calculate_AUPR(y_test, probs)`
+- `calculate_AUROC(y_test, probs)`
+- `get_dbn(n_components, n_iter, n_RBMs)`
 
 
 Each method contains a Docstring. Just use LinkPredPy.classifier_method? with IPython for example to get the documentation.
