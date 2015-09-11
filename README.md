@@ -23,7 +23,7 @@ Each method contains a `Docstring`. Just use `LinkPredPy.classifier_method?` wit
 
 
 Code examples (check `examples.py`):
-```
+```python
 import LinkPredPy as lp
 import networkx as nx
 import numpy as np
