@@ -1,5 +1,4 @@
 import networkx as nx
-from itertools import combinations
 
 
 class Link:
@@ -73,6 +72,8 @@ def missing_links(graph, similarity_index):
         score = similarity_matrix[node1_index, node2_index]
         link = Link(node1, node2, score)
         links.append(link)
+
+    links.sort(reverse=True)
 
     return links
 
