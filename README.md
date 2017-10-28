@@ -1,6 +1,6 @@
 LinkPredPy
 ==========
-A gentle link prediction library in python.
+A gentle link prediction toolkit in python.
 
 
 # Example
