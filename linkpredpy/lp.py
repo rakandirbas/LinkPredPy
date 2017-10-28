@@ -44,7 +44,6 @@ def cn(graph):
     """
     Common neighbours similarity index.
     :param graph: a graph to apply this similarity index on.
-    :type graph: networkx graph.
     :return: similarity matrix.
     """
     adjacency_matrix = nx.adj_matrix(graph)
@@ -54,10 +53,8 @@ def cn(graph):
 def missing_links(graph, similarity_index):
     """
     Returns the missing links in the graph and their confidence scores according to the specified similarity index.
-    :param graph: a graph whose missing links will be predicted.
-    :type graph: networkx graph.
+    :param graph: a networkx graph whose missing links will be predicted.
     :param similarity_index: a function that return a similarity matrix for the graph.
-    :type similarity_index: function.
     :return: a list of Links objects.
     """
     for index, name in enumerate(graph.nodes()):
