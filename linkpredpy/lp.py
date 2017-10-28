@@ -50,7 +50,7 @@ def cn(graph):
     return adjacency_matrix**2
 
 
-def missing_links(graph, similarity_index):
+def get_missing_links(graph, similarity_index):
     """
     Returns the missing links in the graph and their confidence scores according to the specified similarity index.
     :param graph: a networkx graph whose missing links will be predicted.
@@ -74,3 +74,19 @@ def missing_links(graph, similarity_index):
 
     return links
 
+
+def extend_graph(graph, missing_links, threshold):
+    """
+    Returns a graph composed by copying the original graph and adding the missing links to it.
+    :param graph: the graph whose missing links to be added.
+    :param missing_links: a list of missing links.
+    :param threshold: the links whose scores above the specified threshold will be added.
+    :return:
+    """
+
+    graph_copy = graph.copy()
+    for link in missing_links:
+        if link.score > threshold:
+            graph_copy.add_edge(link.node_a, link.node_b)
+
+    return graph_copy
